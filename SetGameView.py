@@ -25,8 +25,8 @@ class GameView:
 
     def set_active(self, active):
         self.active = active
+        self.painter = [FRAME_DEFAULT_RGB for _ in range(len(self.field))]
         if not self.active:
-            self.painter = [FRAME_DEFAULT_RGB for _ in range(len(self.field))]
             self.make_canvases_for_cards()
 
     def set_layout(self, layout):
@@ -62,7 +62,10 @@ class GameView:
 
                     m = 0.015 * w
                     ctx.rectangle(m, m, w - 2 * m, h - 2 * m)
-                    ctx.set_source_rgb(*self.painter[i])
+                    if self.active:
+                        ctx.set_source_rgb(*self.painter[i])
+                    else:
+                        ctx.set_source_rgb(*FRAME_DEFAULT_RGB)
                     ctx.set_line_width(m)
                     ctx.stroke()
 

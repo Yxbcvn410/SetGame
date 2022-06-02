@@ -240,7 +240,7 @@ def main_window():
             "color, shape, fill and number of objects. "
             "\nTo select a card, click it. "
             "You can also use keyboard shortcuts if the game field is aligned horizontally: "
-            "For example, pressing Q is equal to clicking the card in the top-right position. ",
+            "For example, pressing Q is equal to clicking the card in the top-left position. ",
             message_type=Gtk.MessageType.INFO,
             buttons=Gtk.ButtonsType.OK,
             transient_for=win

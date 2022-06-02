@@ -1,10 +1,9 @@
 import gi
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk, GLib
 from SetGameController import write_stats
 from SetGame import Game, GameLim, Settings
-from threading import Timer
 
 SETTINGS_PATH = "settings.json"
 
@@ -32,7 +31,8 @@ def settings_window(initial_params: Settings, confirm_callback):
         initial_params.mode.limit = GameLim(game_lim_cb.get_active())
         initial_params.mode.shuffle = always_shuffle.get_property("active")
         initial_params.disable_hint = hide_hint_chb.get_property("active")
-        initial_params.field_layout = orientation.get_active() == 1
+        initial_params.field_layout.field_vertical = field_orient_cb.get_active() == 1
+        initial_params.field_layout.card_vertical = card_orient_cb.get_active() == 1
         always_shuffle.set_sensitive(initial_params.mode.limit != GameLim.FIND_ALL)
         return
 
@@ -65,13 +65,22 @@ def settings_window(initial_params: Settings, confirm_callback):
     gr.attach(hide_hint_chb, 0, row_n, 2, 1)
 
     row_n += 1
-    orientation = Gtk.ComboBoxText()
+    field_orient_cb = Gtk.ComboBoxText()
     for var in ["Horizontal", "Vertical"]:
-        orientation.append_text(var)
-    orientation.set_active(initial_params.field_layout)
-    orientation.connect("changed", cbox_handler)
+        field_orient_cb.append_text(var)
+    field_orient_cb.set_active(initial_params.field_layout.field_vertical)
+    field_orient_cb.connect("changed", cbox_handler)
     gr.attach(Gtk.Label(label="Field orientation"), 0, row_n, 1, 1)
-    gr.attach(orientation, 1, row_n, 1, 1)
+    gr.attach(field_orient_cb, 1, row_n, 1, 1)
+
+    row_n += 1
+    card_orient_cb = Gtk.ComboBoxText()
+    for var in ["Horizontal", "Vertical"]:
+        card_orient_cb.append_text(var)
+    card_orient_cb.set_active(initial_params.field_layout.card_vertical)
+    card_orient_cb.connect("changed", cbox_handler)
+    gr.attach(Gtk.Label(label="Card orientation"), 0, row_n, 1, 1)
+    gr.attach(card_orient_cb, 1, row_n, 1, 1)
 
     row_n += 1
     stats_collect = Gtk.Switch()
@@ -164,7 +173,6 @@ def main_window():
     field_grid.set_size_request(600, 400)
 
     asp = Gtk.AspectFrame(obey_child=False)
-    main_l.pack_start(asp, True, True, 0)
     asp.add(field_grid)
 
     def on_game_over(caption):
@@ -179,6 +187,21 @@ def main_window():
 
     settings = Settings(SETTINGS_PATH)
     game = Game(asp, settings, on_game_over)
+
+    KEYS = ['QWERTYU', 'ASDFGHJ', 'ZXCVBNM']
+
+    def on_key_press_event(_widget, event):
+        key = Gdk.keyval_name(event.hardware_keycode)
+        i = 0
+        for row in KEYS:
+            if key in row:
+                j = row.find(key)
+                if not game.view.layout.field_vertical:
+                    game.view.process_card_clicked(i + j * 3)
+                return
+            i += 1
+
+    win.connect("key_press_event", on_key_press_event)
 
     bts = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL, spacing=5, halign=Gtk.Align.CENTER, border_width=5)
 
@@ -209,11 +232,31 @@ def main_window():
     settings_button.connect("clicked", lambda _widget: settings_win.show_all())
     bts.pack_start(settings_button, False, False, 0)
 
+    def on_help_request(_widget):
+        d = Gtk.MessageDialog(
+            text=
+            "The goal of this game is to find Sets. "
+            "Each Set contains three cards, which should be all the same or all different by each parameter: "
+            "color, shape, fill and number of objects. "
+            "\nTo select a card, click it. "
+            "You can also use keyboard shortcuts if the game field is aligned horizontally: "
+            "For example, pressing Q is equal to clicking the card in the top-right position. ",
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.OK,
+            transient_for=win
+        )
+        d.run()
+        d.destroy()
+
+    about_button = Gtk.Button(label="About")
+    about_button.connect("clicked", on_help_request)
+    bts.pack_start(about_button, False, False, 0)
+
     main_l.pack_start(bts, False, False, 0)
+    main_l.pack_start(asp, True, True, 5)
 
     def on_destroy(_w, _e):
-        nonlocal settings, tmr
-        tmr.cancel()
+        nonlocal settings
         if settings.stats_collect:
             write_stats(settings.stats_path)
         return False
@@ -221,17 +264,15 @@ def main_window():
     win.connect("destroy", Gtk.main_quit)
     win.connect("delete-event", on_destroy)
 
-    def start_timer():
+    def update_status():
         if game.controller.is_game_played():
             lab.set_label(game.controller.status())
         else:
             lab.set_label("Click New game to start")
-        nonlocal tmr
-        tmr = Timer(0.1, start_timer)
-        tmr.start()
+        return True
 
-    tmr = Timer(0.1, start_timer)
-    tmr.start()
+    GLib.timeout_add(100, update_status)
+
     return win
 
 

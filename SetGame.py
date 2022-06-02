@@ -1,10 +1,10 @@
 from SetGameField import GameField
-from SetGameView import GameView
+from SetGameView import GameView, FieldLayout
 from SetGameController import GameController, GameMode, GameLim
 import json
 from pathlib import Path
 
-DEFAULT_SETTINGS = {"mode": 1, "shuffle": False, "v_layout": True, "stats": True, "stats_path": "stats.csv",
+DEFAULT_SETTINGS = {"mode": 1, "shuffle": False, "field_v": False, "card_v": False, "stats": True, "stats_path": "stats.csv",
                     "disable_hint": True}
 
 
@@ -17,7 +17,8 @@ class Settings:
         self.mode = GameMode(GameLim(settings["mode"]), settings["shuffle"])
         self.stats_collect = settings["stats"]
         self.stats_path = settings["stats_path"]
-        self.field_layout = settings["v_layout"]
+        self.field_layout = FieldLayout(settings["field_v"], settings["card_v"])
+        self.card_layout = settings["card_v"]
         self.disable_hint = settings["disable_hint"]
 
     def correct(self):
@@ -30,7 +31,8 @@ class Settings:
             "shuffle": self.mode.shuffle,
             "stats": self.stats_collect,
             "stats_path": self.stats_path,
-            "v_layout": self.field_layout,
+            "field_v": self.field_layout.field_vertical,
+            "card_v": self.field_layout.card_vertical,
             "disable_hint": self.disable_hint
         }
 
@@ -58,6 +60,7 @@ class Game:
 
     def show_hint(self):
         self.view.hint_set()
+        self.controller.mark_hint()
 
     def restart(self):
         self.controller.restart()
